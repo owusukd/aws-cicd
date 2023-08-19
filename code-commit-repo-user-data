@@ -1,0 +1,53 @@
+#!/bin/bash
+
+### Connection step
+## Create an IAM user with code commit full access for the specific repo
+## Copy ssh public key to the security credentials of the user
+## Copy and save the ssh key ID which is the value for 'User' below
+
+## Edit the ssh config file on your local host
+
+cat <<EOT>> ~/.ssh/config
+
+Host git-codecommit.*.amazonaws.com
+ User APKA6CJL2XCPRUP7KAO2
+ IdentityFile ~/.ssh/id_rsa
+EOT
+
+chmod 600 ~/.ssh/config
+
+## Clone github repo
+git clone ssh://git-codecommit.us-east-1.amazonaws.com/v1/repos/vprofile-code-repo
+
+
+### Clone source code from git repo and add push it to aws code commit repo
+git clone git@github.com:owusukd/vprofile-project.git
+cd vprofile-project
+
+## Checkout the branches to push to code commit repo
+## I excluded the master branch
+git checkout master
+git branch -a | grep -v HEAD | cut -d'/' -f3 | grep -v master > ./branches
+
+for i in `cat ./branches`; do
+    git checkout $i 
+done
+
+## Fetch tags
+git fetch --tags
+
+## Revome the remote repo (github) and replace it with the code commit repo
+git remote rm origin
+git remote add origin ssh://git-codecommit.us-east-1.amazonaws.com/v1/repos/vprofile-code-repo 
+
+## Check if ssh config file was updated correctly
+cat ./.git/config
+
+## Push to repo
+# To avoid send-pack: unexpected disconnect while reading sideband packet and remote end hung up
+export GIT_TRACE_PACKET=1
+export GIT_TRACE=1
+export GIT_CURL_VERBOSE=1
+# Push to repo
+git push origin --all
+git push --tags
